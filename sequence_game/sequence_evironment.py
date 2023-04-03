@@ -55,14 +55,17 @@ class SequenceEnvironment(gym.Env):
         Gets the observation of the game from current player's POV
 
         :returns
-        one giant matrix containing all the player's positions on the board and the players hand positions
+        one matrix containing all the player's positions on the board and the current player's hand positions
         """
         players_hand = self.state["hand_positions"][self.current_player]
         total_observation = np.concatenate((self.state['player_board_positions'], players_hand))
         return total_observation
 
     def update_observation_for_regular_cards(self, position_placed):
-
+        """
+        Updates the game's state based on the position of the card played for all cards other than one eyed jack
+        :param position_placed:
+        """
         # take the action for the current player, update the observations
         # first update the player's position on board
         current_player_positions = self.state['player_board_positions'][self.current_player]
@@ -80,7 +83,10 @@ class SequenceEnvironment(gym.Env):
             other_player_board_positions[player][position_placed] = 1
 
     def update_observation_for_one_eyed_jacks(self, position_placed):
-
+        """
+        Updates the game's state based on the position of one eyed jack played
+        :param position_placed:
+        """
         other_player_board_positions = self.state['other_player_board_positions']
         for player in range(self.players):
             other_player_board_positions[player] = 0
@@ -93,7 +99,11 @@ class SequenceEnvironment(gym.Env):
         entire_board_positions[position_placed] = 0
 
     def step(self, action: ActType):
-        # check if the action is a valid action for the current player
+        """
+        Updates games state based on the current action, and calculates new observations/rewards, it also updates the current player
+        :param action (tuple): tuple containing 3 elements: the card position in hand that was played, the row and column where the card is to be played
+        :return: returns a tuple containing (new observation, reward for the action, has the game ended, info about the actions)
+        """
         card_played, row, col = action
         position_placed = (row, col)
         is_one_eyed_jack = self.state['is_card_one_eyed_jack'][self.current_player][card_played]
@@ -110,7 +120,7 @@ class SequenceEnvironment(gym.Env):
         next_card = self.get_next_card()
         self.give_player_card_at_hand_position(self.current_player, next_card, card_played)
 
-        length_factor = self.check_for_sequences_formed(position_placed)
+        length_factor = self.check_for_sequences(position_placed)
         number_of_sequences_so_far = len(self.formed_sequences[self.current_player])
         reward = self.sequence_length_reward_multiplier ** length_factor + self.final_sequence_reward ** number_of_sequences_so_far
 
@@ -122,6 +132,9 @@ class SequenceEnvironment(gym.Env):
             'reason': 'Max Sequences Formed' if end else 'Game continues'}
 
     def render(self):
+        """
+        Renders the current state of the board
+        """
         arr = self.state['player_board_positions']
 
         # create a 2D array with random numbers
@@ -143,6 +156,12 @@ class SequenceEnvironment(gym.Env):
             seed: Optional[int] = None,
             options: Optional[dict] = None,
     ):
+        """
+        Sets up the environment
+        :param seed:
+        :param options:
+        :return:
+        """
         self.move_to_initial_state()
         return self.get_current_players_observation()
 
@@ -213,7 +232,11 @@ class SequenceEnvironment(gym.Env):
         return fillable_positions
 
     def is_location_in_any_sequence(self, location):
-
+        """
+        Checks if the given location is occupied by any of the already formed sequences
+        :param location:
+        :return: True if location is in an existing sequence, false if not
+        """
         for player, sequences in self.formed_sequences.items():
             for sequence in sequences:
                 if location in sequences:
@@ -249,13 +272,22 @@ class SequenceEnvironment(gym.Env):
             return board_occupied_locations[position_placed] == 0
 
     def get_next_card(self):
+        """
+        Gets the next card from the card deck if there is any
+        :return: card number that is picked up, if no cards are left, -1
+        """
         try:
             next_card = next(self.card_deck)
             return next_card
         except:
             return -1
 
-    def check_for_sequences_formed(self, position):
+    def check_for_sequences(self, position):
+        """
+        Checks if the position is filled, are there any sequences, and what are the lengths, also updates the formed sequences list if there are any fully formed sequences
+        :param position:
+        :return:
+        """
         matrix = self.state['player_board_positions'][self.current_player]
         # Define the directions to search in
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
@@ -295,23 +327,31 @@ class SequenceEnvironment(gym.Env):
 
         if vertical_length >= 5:
             vertical_sequence_points = points_in_the_direction[0] + points_in_the_direction[1][1:]
-            self.formed_sequences[self.current_player].append(vertical_sequence_points)
+            self.formed_sequences[self.current_player].append(vertical_sequence_points[:5])
         if horizontal_length >= 5:
             horizontal_sequence_points = points_in_the_direction[2] + points_in_the_direction[3][1:]
-            self.formed_sequences[self.current_player].append(horizontal_sequence_points)
+            self.formed_sequences[self.current_player].append(horizontal_sequence_points[:5])
         if top_left_to_bottom_right_length >= 5:
             top_left_to_bottom_right_points = points_in_the_direction[4] + points_in_the_direction[5][1:]
-            self.formed_sequences[self.current_player].append(top_left_to_bottom_right_points)
+            self.formed_sequences[self.current_player].append(top_left_to_bottom_right_points[:5])
         if bottom_left_to_top_right_length >= 5:
             bottom_left_to_top_right_points = points_in_the_direction[6] + points_in_the_direction[7][1:]
-            self.formed_sequences[self.current_player].append(bottom_left_to_top_right_points)
+            self.formed_sequences[self.current_player].append(bottom_left_to_top_right_points[:5])
 
         return max(vertical_length, horizontal_length, top_left_to_bottom_right_length, bottom_left_to_top_right_length)
 
     def give_player_card_at_hand_position(self, player, card, card_number_in_hand):
+        """
+
+        :param player:
+        :param card:
+        :param card_number_in_hand:
+        """
         hand_positions = self.state['hand_positions']
         is_one_eyed_jack_dict = self.state['is_card_one_eyed_jack']
         player_hand_position = hand_positions[player]
         placeable_card_locations = self.get_valid_locations_for_card(card, player)
-        fill_2d_array_with_value(player_hand_position[card_number_in_hand], 1, placeable_card_locations)
+        new_card_positions = np.zeros((10,10))
+        fill_2d_array_with_value(new_card_positions, 1, placeable_card_locations)
+        player_hand_position[card_number_in_hand] = new_card_positions
         is_one_eyed_jack_dict[player][card_number_in_hand] = card == 49
