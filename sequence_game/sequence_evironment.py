@@ -117,10 +117,12 @@ class SequenceEnvironment(gym.Env):
         else:
             self.update_observation_for_regular_cards(position_placed)
 
-        self.update_hand_positions(position_placed)
         # update the player's hand, give them the next card
         next_card = self.get_next_card()
         self.give_player_card_at_hand_position(self.current_player, next_card, card_played)
+
+        self.update_hand_positions(position_placed)
+        self.drop_dead_cards()
 
         length_factor = self.check_for_sequences(position_placed)
         number_of_sequences_so_far = len(self.formed_sequences[self.current_player])
@@ -243,7 +245,7 @@ class SequenceEnvironment(gym.Env):
         """
         for player, sequences in self.formed_sequences.items():
             for sequence in sequences:
-                if location in sequences:
+                if location in sequence:
                     return True
         return False
 
@@ -355,6 +357,8 @@ class SequenceEnvironment(gym.Env):
         is_one_eyed_jack_dict = self.state['is_card_one_eyed_jack']
         player_hand_position = hand_positions[player]
         placeable_card_locations = self.get_valid_locations_for_card(card, player)
+        if not placeable_card_locations:
+            print(card)
         new_card_positions = np.zeros((10, 10))
         fill_2d_array_with_value(new_card_positions, 1, placeable_card_locations)
         player_hand_position[card_number_in_hand] = new_card_positions
@@ -367,10 +371,13 @@ class SequenceEnvironment(gym.Env):
         """
         hand_positions = self.state['hand_positions']
         hand_positions[:, :, position_placed[0], position_placed[1]] = 0
+
+    def drop_dead_cards(self):
+        hand_positions = self.state['hand_positions']
         for player in range(self.players):
             for card in range(self.number_of_cards_per_player):
-                allowed_places = np.sum(hand_positions[player][card])
-                # checking if the card played created a dead card
-                if allowed_places == 0:
+                if np.sum(hand_positions[player][card]) == 0:
                     next_card = self.get_next_card()
+                    if next_card == -1:
+                        return
                     self.give_player_card_at_hand_position(player, next_card, card)

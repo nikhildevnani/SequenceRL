@@ -19,10 +19,14 @@ def get_a_valid_move(observation):
 sequence_env = SequenceEnvironment(2, -1000, 5, 1000)
 obv = sequence_env.reset()
 end = False
-while not end:
-    move = get_a_valid_move(obv)
-    obv, reward, end, info = sequence_env.step(move)
-    sequence_env.render()
+try:
+    while not end:
+        move = get_a_valid_move(obv)
+        obv, reward, end, info = sequence_env.step(move)
+        sequence_env.render()
+except:
+    print("FAILED")
+    print(obv, info)
 print(info)
 # sequence_env.render()
 
