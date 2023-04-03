@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from typing import Optional
 
@@ -8,20 +9,21 @@ from gym.core import ActType
 from gym.spaces import Box, Dict, MultiDiscrete
 
 from sequence_game.helper_functions import get_number_of_cards_for_players, generate_the_card_deck_and_index, \
-    get_indices_from_given_data, get_zero_indices_from_given_data, \
+    get_indices_from_given_data, \
     fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, \
     get_card_positions_on_board, \
-    fill_2d_array_with_value
+    fill_2d_array_with_value, clear_directory
 
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 ALL_POSITIONS = get_all_positions()
+RENDER_OUTPUTS = './render_outputs'
 
 
 class SequenceEnvironment(gym.Env):
 
     def __init__(self, players, invalid_move_reward, sequence_length_reward_multiplier, final_sequence_reward):
 
-        self.formed_sequences = defaultdict(dict)
+        self.formed_sequences = defaultdict(list)
         self.final_sequence_reward = final_sequence_reward
         self.sequence_length_reward_multiplier = sequence_length_reward_multiplier
         self.invalid_move_reward = invalid_move_reward
@@ -32,6 +34,7 @@ class SequenceEnvironment(gym.Env):
         self.number_of_cards_per_player = get_number_of_cards_for_players(players)
         self.max_sequences_to_build = get_number_of_sequences_to_build(players)
         self.sequence_locations = set()
+        self.render_count = 0
 
         self.observation_space = Dict({
             # information about where each player's cards are located on the board
@@ -70,7 +73,6 @@ class SequenceEnvironment(gym.Env):
         # first update the player's position on board
         current_player_positions = self.state['player_board_positions'][self.current_player]
         current_player_positions[position_placed] = 1
-
         # update the entire board
         entire_board_positions = self.state['board_occupied_locations']
         entire_board_positions[position_placed] = 1
@@ -88,15 +90,13 @@ class SequenceEnvironment(gym.Env):
         :param position_placed:
         """
         other_player_board_positions = self.state['other_player_board_positions']
-        for player in range(self.players):
-            other_player_board_positions[player] = 0
+        other_player_board_positions[:, position_placed[0], position_placed[1]] = 0
 
         player_board_positions = self.state['player_board_positions']
-        for player in range(self.players):
-            player_board_positions[player] = 0
+        player_board_positions[:, position_placed[0], position_placed[1]] = 0
 
         entire_board_positions = self.state['board_occupied_locations']
-        entire_board_positions[position_placed] = 0
+        entire_board_positions[position_placed[0], position_placed[1]] = 0
 
     def step(self, action: ActType):
         """
@@ -106,6 +106,7 @@ class SequenceEnvironment(gym.Env):
         """
         card_played, row, col = action
         position_placed = (row, col)
+        print('playing:', action, 'for player:', self.current_player)
         is_one_eyed_jack = self.state['is_card_one_eyed_jack'][self.current_player][card_played]
         if not self.is_action_valid(is_one_eyed_jack, position_placed, card_played):
             return self.get_current_players_observation(), self.invalid_move_reward, True, {
@@ -116,6 +117,7 @@ class SequenceEnvironment(gym.Env):
         else:
             self.update_observation_for_regular_cards(position_placed)
 
+        self.update_hand_positions(position_placed)
         # update the player's hand, give them the next card
         next_card = self.get_next_card()
         self.give_player_card_at_hand_position(self.current_player, next_card, card_played)
@@ -128,6 +130,8 @@ class SequenceEnvironment(gym.Env):
         self.current_player += 1
         self.current_player = self.current_player % self.players
         end = number_of_sequences_so_far == self.max_sequences_to_build
+        if end:
+            print(self.formed_sequences)
         return self.get_current_players_observation(), reward, end, {
             'reason': 'Max Sequences Formed' if end else 'Game continues'}
 
@@ -136,19 +140,18 @@ class SequenceEnvironment(gym.Env):
         Renders the current state of the board
         """
         arr = self.state['player_board_positions']
-
-        # create a 2D array with random numbers
-        arr = np.argmax(arr, axis=0)
-
-        # create a color map with a range of colors
-        cmap = plt.cm.get_cmap('jet', 256)
-
-        # create the image from the 2D array using the color map
-        img = cmap(arr)
-
-        # display the image
-        plt.imshow(img)
-        plt.show()
+        new_image_arr = np.full((10, 10), -5)
+        for row in range(10):
+            for col in range(10):
+                for player in range(self.players):
+                    if (row, col) in CORNER_LOCATIONS:
+                        continue
+                    if arr[player][row][col] == 1:
+                        new_image_arr[row][col] = player
+        image_path = os.path.join(RENDER_OUTPUTS, f"{self.render_count}.png")
+        plt.imshow(new_image_arr, cmap='hot')
+        plt.savefig(image_path)
+        self.render_count += 1
 
     def reset(
             self,
@@ -163,6 +166,7 @@ class SequenceEnvironment(gym.Env):
         :return:
         """
         self.move_to_initial_state()
+        clear_directory(RENDER_OUTPUTS)
         return self.get_current_players_observation()
 
     def distribute_the_cards(self):
@@ -225,7 +229,7 @@ class SequenceEnvironment(gym.Env):
             fillable_positions = get_indices_from_given_data(card_locations_possible, others_card_locations, 1)
         else:
             fillable_positions = get_indices_from_given_data(card_locations_possible,
-                                                                  entire_board_occupied_locations, 0)
+                                                             entire_board_occupied_locations, 0)
 
         # remove corner locations since we can never place cards there
         fillable_positions = [x for x in fillable_positions if x not in CORNER_LOCATIONS]
@@ -351,7 +355,12 @@ class SequenceEnvironment(gym.Env):
         is_one_eyed_jack_dict = self.state['is_card_one_eyed_jack']
         player_hand_position = hand_positions[player]
         placeable_card_locations = self.get_valid_locations_for_card(card, player)
-        new_card_positions = np.zeros((10,10))
+        new_card_positions = np.zeros((10, 10))
         fill_2d_array_with_value(new_card_positions, 1, placeable_card_locations)
         player_hand_position[card_number_in_hand] = new_card_positions
         is_one_eyed_jack_dict[player][card_number_in_hand] = card == 49
+
+    def update_hand_positions(self, position_placed):
+        hand_positions = self.state['hand_positions']
+
+        hand_positions[:, :, position_placed[0], position_placed[1]] = 0

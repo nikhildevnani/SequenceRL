@@ -1,3 +1,4 @@
+import os
 import random
 
 import pandas as pd
@@ -129,3 +130,15 @@ def fill_2d_array_with_value(array, value, indices):
     """
     for index in indices:
         array[index[0]][index[1]] = value
+
+
+def clear_directory(path):
+    # Create the directory if it doesn't exist
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    # Remove all files in the directory
+    for filename in os.listdir(path):
+        file_path = os.path.join(path, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
