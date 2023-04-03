@@ -99,8 +99,6 @@ def fill_locations_with_ones_in_3d_array(arr, ones):
         arr[:, idx[0], idx[1]] = 1
 
 
-
-
 def get_number_of_sequences_to_build(players):
     if players == 2:
         return 2
@@ -108,8 +106,18 @@ def get_number_of_sequences_to_build(players):
 
 
 def get_all_positions():
+    """
+    :return: a list of tuples representing all possible positions on the board
+    """
     return [(x, y) for x in range(10) for y in range(10)]
 
+
 def fill_2d_array_with_value(array, value, indices):
+    """
+    Fills the given array with the given value at the indices
+    :param array: 2d array to be filled
+    :param value: value to be assigned
+    :param indices: indices where the values are to be filled
+    """
     for index in indices:
         array[index[0]][index[1]] = value
