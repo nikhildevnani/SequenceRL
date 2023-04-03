@@ -8,7 +8,7 @@ from gym.core import ActType
 from gym.spaces import Box, Dict, MultiDiscrete
 
 from sequence_game.helper_functions import get_number_of_cards_for_players, generate_the_card_deck_and_index, \
-    get_one_indices_from_given_data, get_zero_indices_from_given_data, \
+    get_indices_from_given_data, get_zero_indices_from_given_data, \
     fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, \
     get_card_positions_on_board, \
     fill_2d_array_with_value
@@ -222,10 +222,10 @@ class SequenceEnvironment(gym.Env):
 
         # filter positions based what can actually be filled
         if card_number == 49:  # one eyed jack can be placed only on already filled locations
-            fillable_positions = get_one_indices_from_given_data(card_locations_possible, others_card_locations)
+            fillable_positions = get_indices_from_given_data(card_locations_possible, others_card_locations, 1)
         else:
-            fillable_positions = get_zero_indices_from_given_data(card_locations_possible,
-                                                                  entire_board_occupied_locations)
+            fillable_positions = get_indices_from_given_data(card_locations_possible,
+                                                                  entire_board_occupied_locations, 0)
 
         # remove corner locations since we can never place cards there
         fillable_positions = [x for x in fillable_positions if x not in CORNER_LOCATIONS]

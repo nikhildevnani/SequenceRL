@@ -1,27 +1,21 @@
 import random
 
-import numpy as np
 import pandas as pd
 
 
-def get_zero_indices_from_given_data(idx_arr, data_arr):
+def get_indices_from_given_data(idx_arr, data_arr, value):
+    """
+    Get all the indices from the array where the values are the given value and are also in the given list of indices
+    :param idx_arr:
+    :param data_arr:
+    :param value:
+    :return:
+    """
     result = []
     for index in idx_arr:
-        if data_arr[index] == 0:
+        if data_arr[index] == value:
             result.append(index)
     return result
-
-
-def get_one_indices_from_given_data(idx_arr, data_arr):
-    result = []
-    for index in idx_arr:
-        if data_arr[index] == 1:
-            result.append(index)
-    return result
-
-
-def get_one_indices(arr):
-    return np.where(arr == 1)[0]
 
 
 def get_number_of_cards_for_players(players):
@@ -53,13 +47,18 @@ def dataframe_to_dict(df):
     # Loop through the values and add them to the dictionary
     for value in values:
         key = value[1]
-        value = convert_to_tuples(value[2:])
+        value = convert_to_numeric_tuples(value[2:])
         result[key] = value
 
     return result
 
 
-def convert_to_tuples(lst):
+def convert_to_numeric_tuples(lst):
+    """
+    Given a list of string represnting tuples, convert them to numeric to tuples
+    :param lst:
+    :return:
+    """
     result = []
     for s in lst:
         tup = tuple(map(int, s.split(',')))
@@ -68,6 +67,10 @@ def convert_to_tuples(lst):
 
 
 def get_card_positions_on_board():
+    """
+    Reads the card mapping file and gets every card's position on the board
+    :return: dictionary containing each card's positions on the board
+    """
     card_positions_df = pd.read_csv('card_mapping.csv')
     card_positions_dict = dataframe_to_dict(card_positions_df)
     return card_positions_dict
@@ -100,6 +103,11 @@ def fill_locations_with_ones_in_3d_array(arr, ones):
 
 
 def get_number_of_sequences_to_build(players):
+    """
+    Returns the number of sequences to build based on the number of players
+    :param players:
+    :return:
+    """
     if players == 2:
         return 2
     return 1
