@@ -362,5 +362,11 @@ class SequenceEnvironment(gym.Env):
 
     def update_hand_positions(self, position_placed):
         hand_positions = self.state['hand_positions']
-
         hand_positions[:, :, position_placed[0], position_placed[1]] = 0
+        for player in range(self.players):
+            for card in range(self.number_of_cards_per_player):
+                allowed_places = np.sum(hand_positions[player][card])
+                # checking if the card played created a dead card
+                if allowed_places == 0:
+                    next_card = self.get_next_card()
+                    self.give_player_card_at_hand_position(player, next_card, card)
