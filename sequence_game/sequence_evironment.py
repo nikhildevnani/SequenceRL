@@ -361,6 +361,10 @@ class SequenceEnvironment(gym.Env):
         is_one_eyed_jack_dict[player][card_number_in_hand] = card == 49
 
     def update_hand_positions(self, position_placed):
+        """
+        Updates the cards in the hands of the players, to see where they can be placed
+        :param position_placed:
+        """
         hand_positions = self.state['hand_positions']
         hand_positions[:, :, position_placed[0], position_placed[1]] = 0
         for player in range(self.players):
