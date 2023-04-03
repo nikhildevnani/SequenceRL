@@ -4,18 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f17b37d5-7daf-45d7-8f70-c28882691de1" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/csv-editor.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SequenceRL.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/card_mapping.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sequence_game/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sequence_game/helper_functions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sequence_game/sequence_evironment.py" afterDir="false" />
+    <list default="true" id="f17b37d5-7daf-45d7-8f70-c28882691de1" name="Changes" comment="Initial Env">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sequence_game/helper_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/sequence_game/helper_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sequence_game/sequence_evironment.py" beforeDir="false" afterPath="$PROJECT_DIR$/sequence_game/sequence_evironment.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -116,7 +108,30 @@
       <option name="presentableId" value="Default" />
       <updated>1680238797925</updated>
     </task>
+    <task id="LOCAL-00001" summary="Initial Env">
+      <created>1680478441731</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1680478441731</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Initial Env" />
+    <option name="LAST_COMMIT_MESSAGE" value="Initial Env" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

@@ -16,13 +16,11 @@ ALL_POSITIONS = get_all_positions()
 
 class SequenceEnvironment(gym.Env):
 
-    def __init__(self, players, invalid_move_reward, valid_move_base_reward, sequence_length_reward_multiplier,
-                 final_sequence_reward, sequence_breaking_reward):
+    def __init__(self, players, invalid_move_reward, sequence_length_reward_multiplier, final_sequence_reward):
 
-        self.sequence_breaking_reward = sequence_breaking_reward
+        self.formed_sequences = None
         self.final_sequence_reward = final_sequence_reward
         self.sequence_length_reward_multiplier = sequence_length_reward_multiplier
-        self.valid_move_base_reward = valid_move_base_reward
         self.invalid_move_reward = invalid_move_reward
         self.state = None
         # first player is player 0
@@ -89,7 +87,6 @@ class SequenceEnvironment(gym.Env):
         entire_board_positions = self.state['board_occupied_locations']
         entire_board_positions[position_placed] = 0
 
-
     def step(self, action: ActType):
         # check if the action is a valid action for the current player
         card_played, row, col = action
@@ -110,12 +107,16 @@ class SequenceEnvironment(gym.Env):
         players_hand = self.state['hand_positions'][self.current_player]
         players_hand[card_played] = card_positions
 
-        sequence_multiplier = self.get_sequence_length_formed(position_placed)
+        length_factor = self.check_for_sequences_formed(position_placed)
+        number_of_sequences_so_far = len(self.formed_sequences[self.current_player])
+        reward = self.sequence_length_reward_multiplier ** length_factor + self.final_sequence_reward ** number_of_sequences_so_far
 
-
-        # update available actions
-
-        pass
+        # move to the next player
+        self.current_player += 1
+        self.current_player = self.current_player % self.players
+        end = number_of_sequences_so_far == self.max_sequences_to_build
+        return self.get_current_players_observation(), reward, end, {
+            'reason': 'Max Sequences Formed' if end else 'Game continues'}
 
     def render(self) -> Optional[Union[RenderFrame, List[RenderFrame]]]:
         pass
@@ -223,3 +224,73 @@ class SequenceEnvironment(gym.Env):
         except:
             return -1
 
+    def check_for_sequences_formed(self, position):
+        """
+        Get the maximum length of a sequence of 1 that can be formed given a matrix containing 1 and 0,
+        a position where the new 1 is to be placed, a list of 2d indices which cannot be included in the sequence.
+        The sequence can be horizontal or vertical or diagonal.
+
+        Parameters:
+            matrix (numpy.ndarray): The input matrix.
+            position (tuple): A tuple representing the position where the new 1 is to be placed.
+            sequences (list(list(tuple))): a list of existing sequences
+
+        Returns:
+            int: The maximum length of a sequence of 1 that can be formed in each direction multiplied
+
+        """
+        matrix = self.state['player_board_positions'][self.current_player]
+        sequences = self.formed_sequences[self.current_player]
+        # Define the directions to search in
+        directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
+        points_in_the_direction = [[] for _ in range(8)]
+
+        # Initialize the maximum sequence length
+        max_seq_len = 0
+
+        sequence_lengths = []
+        # Iterate over the directions
+        for index, direction in enumerate(directions):
+            # Get the starting position
+            i, j = position
+
+            # Initialize the sequence length
+            seq_len = 0
+            number_of_existing_sequence_points_used = 0
+
+            while 0 <= i < matrix.shape[0] and 0 <= j < matrix.shape[1] and matrix[i][j] == 1:
+                if (i, j) in sequences:
+                    number_of_existing_sequence_points_used += 1
+
+                # if we are using more than 1 sequence point, we are extending in the same direction on an existing
+                # sequence, so stop it
+                if number_of_existing_sequence_points_used == 2:
+                    seq_len -= 1
+                    break
+                seq_len += 1
+                points_in_the_direction[index].append((i, j))
+                i += direction[0]
+                j += direction[1]
+
+            # Update the maximum sequence length if needed
+            sequence_lengths.append(seq_len)
+
+        vertical_length = sequence_lengths[0] + sequence_lengths[1] - 1
+        horizontal_length = sequence_lengths[2] + sequence_lengths[3] - 1
+        top_left_to_bottom_right_length = sequence_lengths[4] + sequence_lengths[5] - 1
+        bottom_left_to_top_right_length = sequence_lengths[6] + sequence_lengths[7] - 1
+
+        if vertical_length >= 5:
+            vertical_sequence_points = points_in_the_direction[0] + points_in_the_direction[1][1:]
+            self.formed_sequences[self.current_player].append(vertical_sequence_points)
+        if horizontal_length >= 5:
+            horizontal_sequence_points = points_in_the_direction[2] + points_in_the_direction[3][1:]
+            self.formed_sequences[self.current_player].append(horizontal_sequence_points)
+        if top_left_to_bottom_right_length >= 5:
+            top_left_to_bottom_right_points = points_in_the_direction[4] + points_in_the_direction[5][1:]
+            self.formed_sequences[self.current_player].append(top_left_to_bottom_right_points)
+        if bottom_left_to_top_right_length >= 5:
+            bottom_left_to_top_right_points = points_in_the_direction[6] + points_in_the_direction[7][1:]
+            self.formed_sequences[self.current_player].append(bottom_left_to_top_right_points)
+
+        return max(vertical_length, horizontal_length, top_left_to_bottom_right_length, bottom_left_to_top_right_length)
