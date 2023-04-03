@@ -23,6 +23,7 @@ try:
     while not end:
         move = get_a_valid_move(obv)
         obv, reward, end, info = sequence_env.step(move)
+        print('reward obtained:', reward)
         sequence_env.render()
 except:
     print("FAILED")

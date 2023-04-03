@@ -14,7 +14,7 @@ def get_indices_from_given_data(idx_arr, data_arr, value):
     """
     result = []
     for index in idx_arr:
-        if data_arr[index] == value:
+        if data_arr[index[0], index[1]] == value:
             result.append(index)
     return result
 

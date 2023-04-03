@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from gym.core import ActType
 from gym.spaces import Box, Dict, MultiDiscrete
+from matplotlib.colors import ListedColormap
 
 from sequence_game.helper_functions import get_number_of_cards_for_players, generate_the_card_deck_and_index, \
     get_indices_from_given_data, \
@@ -22,7 +23,8 @@ RENDER_OUTPUTS = './render_outputs'
 class SequenceEnvironment(gym.Env):
 
     def __init__(self, players, invalid_move_reward, sequence_length_reward_multiplier, final_sequence_reward):
-
+        colors = ['white', 'red', 'blue', 'green'][:players + 1]
+        self.cmap = ListedColormap(colors)
         self.formed_sequences = defaultdict(list)
         self.final_sequence_reward = final_sequence_reward
         self.sequence_length_reward_multiplier = sequence_length_reward_multiplier
@@ -84,6 +86,8 @@ class SequenceEnvironment(gym.Env):
                 continue
             other_player_board_positions[player][position_placed] = 1
 
+        return
+
     def update_observation_for_one_eyed_jacks(self, position_placed):
         """
         Updates the game's state based on the position of one eyed jack played
@@ -121,7 +125,7 @@ class SequenceEnvironment(gym.Env):
         next_card = self.get_next_card()
         self.give_player_card_at_hand_position(self.current_player, next_card, card_played)
 
-        self.update_hand_positions(position_placed)
+        self.update_hand_positions(position_placed, is_one_eyed_jack)
         self.drop_dead_cards()
 
         length_factor = self.check_for_sequences(position_placed)
@@ -141,8 +145,10 @@ class SequenceEnvironment(gym.Env):
         """
         Renders the current state of the board
         """
+
         arr = self.state['player_board_positions']
-        new_image_arr = np.full((10, 10), -5)
+        new_image_arr = np.full((10, 10), -1)
+
         for row in range(10):
             for col in range(10):
                 for player in range(self.players):
@@ -151,8 +157,10 @@ class SequenceEnvironment(gym.Env):
                     if arr[player][row][col] == 1:
                         new_image_arr[row][col] = player
         image_path = os.path.join(RENDER_OUTPUTS, f"{self.render_count}.png")
-        plt.imshow(new_image_arr, cmap='hot')
+        plt.imshow(new_image_arr, cmap=self.cmap)
+        plt.colorbar()
         plt.savefig(image_path)
+        plt.clf()
         self.render_count += 1
 
     def reset(
@@ -357,20 +365,39 @@ class SequenceEnvironment(gym.Env):
         is_one_eyed_jack_dict = self.state['is_card_one_eyed_jack']
         player_hand_position = hand_positions[player]
         placeable_card_locations = self.get_valid_locations_for_card(card, player)
-        if not placeable_card_locations:
-            print(card)
         new_card_positions = np.zeros((10, 10))
         fill_2d_array_with_value(new_card_positions, 1, placeable_card_locations)
         player_hand_position[card_number_in_hand] = new_card_positions
         is_one_eyed_jack_dict[player][card_number_in_hand] = card == 49
 
-    def update_hand_positions(self, position_placed):
+    def update_hand_positions(self, position_placed, one_eyed_jack_played):
         """
         Updates the cards in the hands of the players, to see where they can be placed
         :param position_placed:
         """
         hand_positions = self.state['hand_positions']
-        hand_positions[:, :, position_placed[0], position_placed[1]] = 0
+        is_card_in_hand_one_eyed_jack = self.state['is_card_one_eyed_jack']
+
+        for player in range(self.players):
+            for card in range(self.number_of_cards_per_player):
+                if is_card_in_hand_one_eyed_jack[player][card]:
+                    # one eyed jack in players hand
+                    if one_eyed_jack_played:  # one eyed jack played
+                        hand_positions[player][card][position_placed[0]][position_placed[1]] = 0
+                    else:  # regular card was played
+                        if self.current_player == player:
+                            continue
+                        hand_positions[player][card][position_placed[0]][position_placed[1]] = 1
+                else:
+                    # regular card in players hand
+                    if one_eyed_jack_played:
+                        # one eyed jack played
+                        hand_positions[player][card][position_placed[0]][position_placed[1]] = 1
+                    else:
+                        # regular card played
+                        hand_positions[player][card][position_placed[0]][position_placed[1]] = 0
+
+        # if card was removed
 
     def drop_dead_cards(self):
         hand_positions = self.state['hand_positions']
