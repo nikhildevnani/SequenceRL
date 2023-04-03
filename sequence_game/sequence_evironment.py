@@ -1,15 +1,16 @@
 from collections import defaultdict
-from typing import Optional, Union, List
+from typing import Optional
 
 import gym
-import numpy as np
-from gym.core import RenderFrame, ActType
-from gym.spaces import Box, Dict, MultiDiscrete
 import matplotlib.pyplot as plt
+import numpy as np
+from gym.core import ActType
+from gym.spaces import Box, Dict, MultiDiscrete
 
 from sequence_game.helper_functions import get_number_of_cards_for_players, generate_the_card_deck_and_index, \
     get_one_indices_from_given_data, get_zero_indices_from_given_data, \
-    fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, get_card_positions_on_board, \
+    fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, \
+    get_card_positions_on_board, \
     fill_2d_array_with_value
 
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
@@ -96,7 +97,7 @@ class SequenceEnvironment(gym.Env):
         card_played, row, col = action
         position_placed = (row, col)
         is_one_eyed_jack = self.state['is_card_one_eyed_jack'][self.current_player][card_played]
-        if not self.is_action_valid(is_one_eyed_jack, position_placed):
+        if not self.is_action_valid(is_one_eyed_jack, position_placed, card_played):
             return self.get_current_players_observation(), self.invalid_move_reward, True, {
                 'reason': 'player played an invalid move'}
 
@@ -120,7 +121,7 @@ class SequenceEnvironment(gym.Env):
         return self.get_current_players_observation(), reward, end, {
             'reason': 'Max Sequences Formed' if end else 'Game continues'}
 
-    def render(self) -> Optional[Union[RenderFrame, List[RenderFrame]]]:
+    def render(self):
         arr = self.state['player_board_positions']
 
         # create a 2D array with random numbers
@@ -135,7 +136,6 @@ class SequenceEnvironment(gym.Env):
         # display the image
         plt.imshow(img)
         plt.show()
-
 
     def reset(
             self,
@@ -155,7 +155,6 @@ class SequenceEnvironment(gym.Env):
             cards = [next(self.card_deck) for _ in range(self.number_of_cards_per_player)]
             player_cards[player] = cards
         return player_cards
-
 
     def move_to_initial_state(self):
         """
@@ -185,7 +184,6 @@ class SequenceEnvironment(gym.Env):
         for player, cards in self.player_cards.items():
             for card_position_in_hand, card in enumerate(cards):
                 self.give_player_card_at_hand_position(player, card, card_position_in_hand)
-
 
     def get_valid_locations_for_card(self, card_number, player):
         """
@@ -222,16 +220,25 @@ class SequenceEnvironment(gym.Env):
                     return True
         return False
 
-    def is_action_valid(self, is_one_eyed_jack, position_placed):
+    def is_action_valid(self, is_one_eyed_jack, position_placed, card_played):
         """
         Returns True if the given action is valid else False
         """
+        # check if it is a corner location
         if position_placed in CORNER_LOCATIONS:
             return False
 
+        # check if it is in a formed sequence
         if self.is_location_in_any_sequence(position_placed):
             return False
 
+        # check if the card is allowed to be placed there based on card value
+        hand_positions = self.state['hand_positions'][self.current_player]
+        valid_positions_for_card = hand_positions[card_played]
+        if valid_positions_for_card[position_placed[0], position_placed[1]] != 1:
+            return False
+
+        # check if the card is allowed to be placed there based on board values
         board_occupied_locations = self.state['board_occupied_locations']
         others_occupied_locations = self.state['other_player_board_positions'][self.current_player]
         if is_one_eyed_jack:
@@ -249,25 +256,10 @@ class SequenceEnvironment(gym.Env):
             return -1
 
     def check_for_sequences_formed(self, position):
-        """
-        Get the maximum length of a sequence of 1 that can be formed given a matrix containing 1 and 0,
-        a position where the new 1 is to be placed, a list of 2d indices which cannot be included in the sequence.
-        The sequence can be horizontal or vertical or diagonal.
-
-        Parameters:
-            matrix (numpy.ndarray): The input matrix.
-            position (tuple): A tuple representing the position where the new 1 is to be placed.
-            sequences (list(list(tuple))): a list of existing sequences
-
-        Returns:
-            int: The maximum length of a sequence of 1 that can be formed in each direction multiplied
-
-        """
         matrix = self.state['player_board_positions'][self.current_player]
         # Define the directions to search in
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
         points_in_the_direction = [[] for _ in range(8)]
-
 
         sequence_lengths = []
         # Iterate over the directions
