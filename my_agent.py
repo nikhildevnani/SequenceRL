@@ -1,14 +1,13 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchsummary
 
 
-class MyNet(nn.Module):
-    def __init__(self, batch_size=None):
-        super(MyNet, self).__init__()
-        self.batch_size = batch_size
-        # Define the convolutional layers
+class SequenceTwoPlayerAgent(nn.Module):
+    def __init__(self):
+        super(SequenceTwoPlayerAgent, self).__init__()
+        self.idx = torch.cartesian_prod(torch.arange(7), torch.arange(10), torch.arange(10))
         self.conv1 = nn.Conv2d(in_channels=9, out_channels=32, kernel_size=5)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3)
         self.pool = nn.MaxPool2d(kernel_size=2)
@@ -25,38 +24,37 @@ class MyNet(nn.Module):
         self.hand_layer_2 = nn.Linear(32, 16)
         self.hand_layer_3 = nn.Linear(16, 7)
 
-    def forward(self, x, b):
+    def forward(self, board_and_hand_positions, is_card_one_eyed_jack):
         # Apply the convolutional layers
-        print(x.shape, b.shape)
-        x = F.relu(self.conv1(x))
-        x = self.pool(F.relu(self.conv2(x)))
+        board_and_hand_positions = F.relu(self.conv1(board_and_hand_positions))
+        board_and_hand_positions = self.pool(F.relu(self.conv2(board_and_hand_positions)))
         # Flatten the output from the convolutional layers
-        x = x.view(-1, 64 * 2 * 2)
+        board_and_hand_positions = board_and_hand_positions.view(-1, 64 * 2 * 2)
         # Apply the linear layers
-        x = F.relu(self.fc1(x))
-        x = torch.cat([x, b], dim=1)
-        x = F.relu(self.fc2(x))
-        print(x.shape)
-        row_layer_1_output = self.row_layer_1(x)
+        board_and_hand_positions = F.relu(self.fc1(board_and_hand_positions))
+        board_and_hand_positions = torch.cat([board_and_hand_positions, is_card_one_eyed_jack], dim=1)
+        board_and_hand_positions = F.relu(self.fc2(board_and_hand_positions))
+
+        row_layer_1_output = self.row_layer_1(board_and_hand_positions)
         row_layer_2_output = self.row_layer_2(row_layer_1_output)
         row_layer_3_output = self.row_layer_3(row_layer_2_output)
 
-        col_layer_1_output = self.col_layer_1(x)
+        col_layer_1_output = self.col_layer_1(board_and_hand_positions)
         col_layer_2_output = self.col_layer_2(col_layer_1_output)
         col_layer_3_output = self.col_layer_3(col_layer_2_output)
 
-        hand_layer_1_output = self.hand_layer_1(x)
+        hand_layer_1_output = self.hand_layer_1(board_and_hand_positions)
         hand_layer_2_output = self.hand_layer_2(hand_layer_1_output)
         hand_layer_3_output = self.hand_layer_3(hand_layer_2_output)
 
-        return row_layer_3_output, col_layer_3_output, hand_layer_3_output
+        result = torch.zeros(2, self.idx.shape[0])
+
+        for i in range(self.idx.shape[0]):
+            result[:, i] = hand_layer_3_output[:, self.idx[i, 0]] * row_layer_3_output[:,
+                                                                    self.idx[i, 1]] * col_layer_3_output[:,
+                                                                                      self.idx[i, 2]]
+        return result
 
 
-sample_data_jacks = torch.Tensor(np.random.randint(2, size=(2, 9, 10, 10)))
-sample_data_hand = torch.Tensor(np.random.randint(2, size=(2, 7)))
-# print(sample_data_jacks, sample_data_hand)
-
-model = MyNet()
-x1, x2, x3 = model.forward(sample_data_jacks, sample_data_hand)
-
-print(x1.shape, x2.shape, x3.shape)
+model = SequenceTwoPlayerAgent()
+torchsummary.summary(model, [(9, 10, 10), (7,)])
