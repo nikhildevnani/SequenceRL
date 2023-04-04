@@ -62,9 +62,9 @@ class SequenceEnvironment(gym.Env):
         :returns
         one matrix containing all the player's positions on the board and the current player's hand positions
         """
-        players_hand = self.state["hand_positions"][self.current_player]
-        total_observation = np.concatenate((self.state['player_board_positions'], players_hand))
-        return total_observation
+
+        return self.state['player_board_positions'], self.state["hand_positions"][self.current_player], \
+            self.state['is_card_one_eyed_jack'][self.current_player]
 
     def update_observation_for_regular_cards(self, position_placed):
         """
@@ -134,7 +134,7 @@ class SequenceEnvironment(gym.Env):
 
         # move to the next player
         self.current_player += 1
-        self.current_player = self.current_player % self.players
+        self.current_player %= self.players
         end = number_of_sequences_so_far == self.max_sequences_to_build
         if end:
             print(self.formed_sequences)
