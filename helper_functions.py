@@ -2,6 +2,7 @@ import os
 import random
 
 import pandas as pd
+import torch
 
 
 def get_indices_from_given_data(idx_arr, data_arr, value):
@@ -142,3 +143,20 @@ def clear_directory(path):
         file_path = os.path.join(path, filename)
         if os.path.isfile(file_path):
             os.remove(file_path)
+
+
+def get_a_valid_move(observation):
+    """
+    Looks at the hand position of a player and returns a random move that is valid
+    :param observation: expects a torch tensor representing the hand of a player
+    :return: (tuple) containing the move that is supposed to be player (card_number, row_number, col_number)
+    """
+    card_index = random.randint(0, 6)
+    card_values = observation[card_index]
+    card_positions = torch.nonzero(card_values == 1)
+    if card_positions.nelement() == 0:
+        return get_a_valid_move(observation)
+
+    random_index = torch.randint(0, len(card_positions), (1,))
+    position = card_positions[random_index][0]
+    return card_index, position[0].item(), position[1].item()

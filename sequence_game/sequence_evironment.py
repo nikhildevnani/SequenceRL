@@ -1,3 +1,4 @@
+import logging
 import os
 from collections import defaultdict
 from typing import Optional
@@ -5,11 +6,12 @@ from typing import Optional
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from gym.core import ActType
 from gym.spaces import Box, Dict, MultiDiscrete
 from matplotlib.colors import ListedColormap
 
-from sequence_game.helper_functions import get_number_of_cards_for_players, generate_the_card_deck_and_index, \
+from helper_functions import get_number_of_cards_for_players, generate_the_card_deck_and_index, \
     get_indices_from_given_data, \
     fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, \
     get_card_positions_on_board, \
@@ -62,9 +64,9 @@ class SequenceEnvironment(gym.Env):
         :returns
         one matrix containing all the player's positions on the board and the current player's hand positions
         """
-
-        return self.state['player_board_positions'], self.state["hand_positions"][self.current_player], \
-            self.state['is_card_one_eyed_jack'][self.current_player]
+        return torch.from_numpy(self.state['player_board_positions']), torch.from_numpy(
+            self.state["hand_positions"][self.current_player]), torch.from_numpy(
+            self.state['is_card_one_eyed_jack'][self.current_player])
 
     def update_observation_for_regular_cards(self, position_placed):
         """
@@ -110,7 +112,7 @@ class SequenceEnvironment(gym.Env):
         """
         card_played, row, col = action
         position_placed = (row, col)
-        print('playing:', action, 'for player:', self.current_player)
+        logging.info(f'playing:{action}, for player:{self.current_player}')
         is_one_eyed_jack = self.state['is_card_one_eyed_jack'][self.current_player][card_played]
         if not self.is_action_valid(is_one_eyed_jack, position_placed, card_played):
             return self.get_current_players_observation(), self.invalid_move_reward, True, {
@@ -211,7 +213,7 @@ class SequenceEnvironment(gym.Env):
         # no one has cards on the board at start
         self.state['other_player_board_positions'] = np.zeros((self.players, 10, 10))
 
-        self.state['is_card_one_eyed_jack'] = defaultdict(dict)
+        self.state['is_card_one_eyed_jack'] = np.zeros((self.players, self.number_of_cards_per_player))
         hand_positions = np.zeros((self.players, self.number_of_cards_per_player, 10, 10))
         self.state['hand_positions'] = hand_positions
         for player, cards in self.player_cards.items():
