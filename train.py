@@ -11,7 +11,7 @@ torch.set_default_dtype(torch.float64)
 num_episodes = 10
 lr = 0.01  # Learning rate for the optimizer
 gamma = 0.99  # Discount factor for the Bellman equation
-epsilon = 0.95  # Epsilon for epsilon-greedy exploration
+epsilon = 0.1  # Epsilon for epsilon-greedy exploration
 number_of_players = 2
 update_target_frequency = 20  # updates the target network after these many steps
 batch_size = 32

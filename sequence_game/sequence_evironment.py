@@ -15,7 +15,7 @@ from helper_functions import get_number_of_cards_for_players, generate_the_card_
     get_indices_from_given_data, \
     fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, \
     get_card_positions_on_board, \
-    fill_2d_array_with_value, clear_directory
+    fill_2d_array_with_value, clear_directory, get_negative_array
 
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 ALL_POSITIONS = get_all_positions()
@@ -63,9 +63,10 @@ class SequenceEnvironment(gym.Env):
         :returns
         one matrix containing all the player's positions on the board and the current player's hand positions
         """
-        return torch.from_numpy(self.state['player_board_positions']), torch.from_numpy(
-            self.state["hand_positions"][self.current_player]), torch.from_numpy(
-            self.state['is_card_one_eyed_jack'][self.current_player])
+
+        return torch.from_numpy(get_negative_array(self.state['player_board_positions'])), \
+            torch.from_numpy(get_negative_array(self.state["hand_positions"][self.current_player])), \
+            torch.from_numpy(get_negative_array(self.state['is_card_one_eyed_jack'][self.current_player]))
 
     def update_observation_for_regular_cards(self, position_placed):
         """

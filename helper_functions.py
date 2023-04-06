@@ -1,6 +1,7 @@
 import os
 import random
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -170,3 +171,7 @@ def get_a_valid_move(observation, depth=0):
     random_index = torch.randint(0, len(card_positions), (1,))
     position = card_positions[random_index][0]
     return card_index, position[0].item(), position[1].item()
+
+
+def get_negative_array(array):
+    return np.where(array == 0, -1, array)
