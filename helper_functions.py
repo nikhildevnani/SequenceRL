@@ -145,7 +145,7 @@ def clear_directory(path):
             os.remove(file_path)
 
 
-def get_a_valid_move(observation):
+def get_a_valid_move(observation, depth=0):
     """
     Looks at the hand position of a player and returns a random move that is valid
     :param observation: expects a torch tensor representing the hand of a player
@@ -154,8 +154,18 @@ def get_a_valid_move(observation):
     card_index = random.randint(0, 6)
     card_values = observation[card_index]
     card_positions = torch.nonzero(card_values == 1)
+
     if card_positions.nelement() == 0:
-        return get_a_valid_move(observation)
+        if depth == 2:
+            for card in observation:
+                card_positions = torch.nonzero(card == 1)
+                if card_positions.nelement() == 0:
+                    continue
+                random_index = torch.randint(0, len(card_positions), (1,))
+                position = card_positions[random_index][0]
+                return card_index, position[0].item(), position[1].item()
+            return 0, 0, 0  # no valid move left, just end the game
+        return get_a_valid_move(observation, depth + 1)
 
     random_index = torch.randint(0, len(card_positions), (1,))
     position = card_positions[random_index][0]

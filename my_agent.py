@@ -10,8 +10,9 @@ from replay_buffer import ReplayBuffer
 
 
 class SequenceTwoPlayerQNetwork(nn.Module):
-    def __init__(self, number_of_players):
+    def __init__(self, number_of_players, batch_size):
         super(SequenceTwoPlayerQNetwork, self).__init__()
+        self.batch_size = batch_size
         self.number_of_players = number_of_players
         self.number_of_cards = get_number_of_cards_for_players(number_of_players)
         self.idx = torch.cartesian_prod(torch.arange(7), torch.arange(10), torch.arange(10))
@@ -54,7 +55,7 @@ class SequenceTwoPlayerQNetwork(nn.Module):
         hand_layer_2_output = self.hand_layer_2(hand_layer_1_output)
         hand_layer_3_output = self.hand_layer_3(hand_layer_2_output)
 
-        result = torch.zeros(32, self.idx.shape[0])
+        result = torch.zeros(self.batch_size, self.idx.shape[0])
 
         for i in range(self.idx.shape[0]):
             result[:, i] = hand_layer_3_output[:, self.idx[i, 0]] * row_layer_3_output[:,
@@ -64,9 +65,9 @@ class SequenceTwoPlayerQNetwork(nn.Module):
 
 
 class DQNAgent:
-    def __init__(self, number_of_players, lr=0.001, gamma=0.99, epsilon=0.1, batch_size=32):
-        self.q_network = SequenceTwoPlayerQNetwork(number_of_players)
-        self.target_q_network = SequenceTwoPlayerQNetwork(number_of_players)
+    def __init__(self, number_of_players, lr=0.001, gamma=0.99, epsilon=0.1, batch_size=10):
+        self.q_network = SequenceTwoPlayerQNetwork(number_of_players, batch_size)
+        self.target_q_network = SequenceTwoPlayerQNetwork(number_of_players, batch_size)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
         self.loss_function = nn.MSELoss()

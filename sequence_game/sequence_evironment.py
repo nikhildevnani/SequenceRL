@@ -27,7 +27,6 @@ class SequenceEnvironment(gym.Env):
     def __init__(self, players, invalid_move_reward, sequence_length_reward_multiplier, final_sequence_reward):
         colors = ['white', 'red', 'blue', 'green'][:players + 1]
         self.cmap = ListedColormap(colors)
-        self.formed_sequences = defaultdict(list)
         self.final_sequence_reward = final_sequence_reward
         self.sequence_length_reward_multiplier = sequence_length_reward_multiplier
         self.invalid_move_reward = invalid_move_reward
@@ -132,14 +131,12 @@ class SequenceEnvironment(gym.Env):
 
         length_factor = self.check_for_sequences(position_placed)
         number_of_sequences_so_far = len(self.formed_sequences[self.current_player])
-        reward = self.sequence_length_reward_multiplier ** length_factor + self.final_sequence_reward ** number_of_sequences_so_far
+        reward = self.sequence_length_reward_multiplier * length_factor + self.final_sequence_reward * number_of_sequences_so_far
 
         # move to the next player
         self.current_player += 1
         self.current_player %= self.players
         end = number_of_sequences_so_far == self.max_sequences_to_build
-        if end:
-            print(self.formed_sequences)
         return self.get_current_players_observation(), reward, end, {
             'reason': 'Max Sequences Formed' if end else 'Game continues'}
 
@@ -196,6 +193,7 @@ class SequenceEnvironment(gym.Env):
         Generates the initial state of the board and updates self.state, does not return anything
         :param hand_cards:
         """
+        self.formed_sequences = defaultdict(list)
         self.card_deck = generate_the_card_deck_and_index()
         self.player_cards = self.distribute_the_cards()
 
