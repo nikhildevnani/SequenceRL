@@ -11,7 +11,7 @@ torch.set_default_dtype(torch.float64)
 num_episodes = 10
 lr = 0.01  # Learning rate for the optimizer
 gamma = 0.99  # Discount factor for the Bellman equation
-epsilon = 0.3  # Epsilon for epsilon-greedy exploration
+epsilon = 0.1  # Epsilon for epsilon-greedy exploration
 number_of_players = 2
 update_target_frequency = 20  # updates the target network after these many steps
 batch_size = 32
@@ -52,10 +52,10 @@ def train(num_episodes, max_steps_per_episode=100, update_target_freq=10):
                                                                                                         start_time - train_start_time,
                                                                                                         end_time))
 
-        if episode % 500 == 4999:  # write model after every 5000 episodes to disk
+        if episode % 500 == 499:  # write model after every 500 episodes to disk
 
             for index, agent in enumerate(agents):
                 agent.write_model_to_disk(index)
 
 
-train(200000, 100, 2)
+train(20000, 100, 2)
