@@ -10,16 +10,14 @@ from replay_buffer import ReplayBuffer
 
 
 class SequenceTwoPlayerQNetwork(nn.Module):
-    def __init__(self, number_of_players, batch_size):
+    def __init__(self, number_of_players):
         super(SequenceTwoPlayerQNetwork, self).__init__()
-        self.batch_size = batch_size
         self.number_of_players = number_of_players
         self.number_of_cards = get_number_of_cards_for_players(number_of_players)
         self.idx = torch.cartesian_prod(torch.arange(7), torch.arange(10), torch.arange(10))
         self.conv1 = nn.Conv2d(in_channels=9, out_channels=32, kernel_size=5)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3)
         self.pool = nn.MaxPool2d(kernel_size=2)
-        # Define the linear layers
         self.fc1 = nn.Linear(64 * 2 * 2, 128)
         self.fc2 = nn.Linear(128 + self.number_of_cards, 64)
         self.row_layer_1 = nn.Linear(64, 32)
@@ -33,6 +31,7 @@ class SequenceTwoPlayerQNetwork(nn.Module):
         self.hand_layer_3 = nn.Linear(16, self.number_of_cards)
 
     def forward(self, board_and_hand_positions, is_card_one_eyed_jack):
+        num_inputs = is_card_one_eyed_jack.shape[0]
         # Apply the convolutional layers
         board_and_hand_positions = F.relu(self.conv1(board_and_hand_positions))
         board_and_hand_positions = self.pool(F.relu(self.conv2(board_and_hand_positions)))
@@ -55,7 +54,7 @@ class SequenceTwoPlayerQNetwork(nn.Module):
         hand_layer_2_output = self.hand_layer_2(hand_layer_1_output)
         hand_layer_3_output = self.hand_layer_3(hand_layer_2_output)
 
-        result = torch.zeros(self.batch_size, self.idx.shape[0])
+        result = torch.zeros(num_inputs, self.idx.shape[0])
 
         for i in range(self.idx.shape[0]):
             result[:, i] = hand_layer_3_output[:, self.idx[i, 0]] * row_layer_3_output[:,
@@ -66,8 +65,8 @@ class SequenceTwoPlayerQNetwork(nn.Module):
 
 class DQNAgent:
     def __init__(self, number_of_players, lr=0.001, gamma=0.99, epsilon=0.1, batch_size=10):
-        self.q_network = SequenceTwoPlayerQNetwork(number_of_players, batch_size)
-        self.target_q_network = SequenceTwoPlayerQNetwork(number_of_players, batch_size)
+        self.q_network = SequenceTwoPlayerQNetwork(number_of_players)
+        self.target_q_network = SequenceTwoPlayerQNetwork(number_of_players)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
         self.loss_function = nn.MSELoss()
@@ -88,7 +87,7 @@ class DQNAgent:
             is_card_one_eyed_jack = is_card_one_eyed_jack.unsqueeze(0)
             with torch.no_grad():
                 q_values = self.q_network(board_and_hand_positions, is_card_one_eyed_jack)
-                best_action = q_values.argmax().item()
+                best_action = self.filter_invalid_actions(q_values, player_hand_positions)
                 return best_action // 100, (best_action // 10) % 10, best_action % 10
 
     # Function to update the Q-network based on the Bellman equation
@@ -142,3 +141,8 @@ class DQNAgent:
 
     def read_model_from_disk(self, player_number):
         torch.load(self.get_model_path(player_number))
+
+    def filter_invalid_actions(self, q_values, player_hand_positions):
+        mask = player_hand_positions.flatten() == 1
+        max_indices = torch.argmax(q_values.masked_fill(~mask, float('-inf')))
+        return max_indices.item()
