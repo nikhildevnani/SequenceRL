@@ -166,7 +166,7 @@ class SequenceEnvironment(gym.Env):
         index_list = list(zip(positions[0], positions[1], positions[2]))
         print('User Card Positions',
               index_list,
-              'Card Numbers', self.state['actual_card_hand_positions'],
+              'Card Numbers', self.state['actual_card_hand_positions'][self.current_player],
               self.state['is_card_one_eyed_jack'][self.current_player])
         self.render_count += 1
 
