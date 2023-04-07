@@ -51,7 +51,8 @@ class SequenceEnvironment(gym.Env):
             # how many sequences are built by each player
             'sequences_built': Box(low=0, high=self.max_sequences_to_build, shape=(self.players,)),
             # where are other player's cards located
-            'other_player_board_positions': Box(low=0, high=1, shape=(self.players, 10, 10))})
+            'other_player_board_positions': Box(low=0, high=1, shape=(self.players, 10, 10)),
+            'actual_card_hand_positions': Box(low=0, high=1, shape=(self.players, self.number_of_cards_per_player))})
 
         # what card from a player's hand was used and where is it being placed
         self.action_space = MultiDiscrete([7, 10, 10])
@@ -161,6 +162,12 @@ class SequenceEnvironment(gym.Env):
         plt.colorbar()
         plt.savefig(image_path)
         plt.clf()
+        positions = np.nonzero(self.state['hand_positions'][self.current_player])
+        index_list = list(zip(positions[0], positions[1], positions[2]))
+        print('User Card Positions',
+              index_list,
+              'Card Numbers', self.state['actual_card_hand_positions'],
+              self.state['is_card_one_eyed_jack'][self.current_player])
         self.render_count += 1
 
     def reset(
@@ -214,6 +221,7 @@ class SequenceEnvironment(gym.Env):
 
         self.state['is_card_one_eyed_jack'] = np.zeros((self.players, self.number_of_cards_per_player))
         hand_positions = np.zeros((self.players, self.number_of_cards_per_player, 10, 10))
+        self.state['actual_card_hand_positions'] = np.zeros((self.players, self.number_of_cards_per_player))
         self.state['hand_positions'] = hand_positions
         for player, cards in self.player_cards.items():
             for card_position_in_hand, card in enumerate(cards):
@@ -362,6 +370,8 @@ class SequenceEnvironment(gym.Env):
         :param card:
         :param card_number_in_hand:
         """
+        actual_card_hand_positions = self.state['actual_card_hand_positions']
+        actual_card_hand_positions[player][card_number_in_hand] = card
         hand_positions = self.state['hand_positions']
         is_one_eyed_jack_dict = self.state['is_card_one_eyed_jack']
         player_hand_position = hand_positions[player]

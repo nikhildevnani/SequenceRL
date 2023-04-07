@@ -8,6 +8,8 @@ from torch import optim
 from helper_functions import get_number_of_cards_for_players, get_a_valid_move
 from replay_buffer import ReplayBuffer
 
+torch.set_default_dtype(torch.float64)
+
 
 class SequenceTwoPlayerQNetwork(nn.Module):
     def __init__(self, number_of_players):
@@ -140,7 +142,10 @@ class DQNAgent:
         return model_path
 
     def read_model_from_disk(self, player_number):
-        torch.load(self.get_model_path(player_number))
+        model = torch.load(self.get_model_path(player_number))
+        self.target_q_network.load_state_dict(model['model_state_dict'])
+        self.q_network.load_state_dict(model['model_state_dict'])
+        self.optimizer.load_state_dict(model['optimizer_state_dict'])
 
     def filter_invalid_actions(self, q_values, player_hand_positions):
         mask = player_hand_positions.flatten() == 1
