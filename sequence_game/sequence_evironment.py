@@ -15,7 +15,7 @@ from helper_functions import get_number_of_cards_for_players, generate_the_card_
     get_indices_from_given_data, \
     fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, \
     get_card_positions_on_board, \
-    fill_2d_array_with_value, clear_directory, get_negative_array
+    fill_2d_array_with_value, clear_directory, get_negative_array, get_other_positions_dictionary, get_card_mapping
 
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 ALL_POSITIONS = get_all_positions()
@@ -27,10 +27,12 @@ class SequenceEnvironment(gym.Env):
     def __init__(self, players, invalid_move_reward, sequence_length_reward_multiplier, final_sequence_reward):
         colors = ['white', 'red', 'blue', 'green'][:players + 1]
         self.cmap = ListedColormap(colors)
+        self.card_mapping_dict = get_card_mapping()
         self.final_sequence_reward = final_sequence_reward
         self.sequence_length_reward_multiplier = sequence_length_reward_multiplier
         self.invalid_move_reward = invalid_move_reward
         self.state = dict()
+        self.other_positions = get_other_positions_dictionary()
         # first player is player 0
         self.current_player = 0
         self.players = players
@@ -160,14 +162,12 @@ class SequenceEnvironment(gym.Env):
         image_path = os.path.join(RENDER_OUTPUTS, f"{self.render_count}.png")
         plt.imshow(new_image_arr, cmap=self.cmap)
         plt.colorbar()
+        plt.grid()
         plt.savefig(image_path)
         plt.clf()
         positions = np.nonzero(self.state['hand_positions'][self.current_player])
-        index_list = list(zip(positions[0], positions[1], positions[2]))
-        print('User Card Positions',
-              index_list,
-              'Card Numbers', self.state['actual_card_hand_positions'][self.current_player],
-              self.state['is_card_one_eyed_jack'][self.current_player])
+        print('Card Numbers', [(index, self.card_mapping_dict[card_number]) for index, card_number in
+                               enumerate(self.state['actual_card_hand_positions'][self.current_player])])
         self.render_count += 1
 
     def reset(
@@ -238,13 +238,13 @@ class SequenceEnvironment(gym.Env):
         if card_number < 0:
             return []
 
-        if card_number < 48:  # specific positions are possible for cards, except jacks
+        if card_number < 49:  # specific positions are possible for cards, except jacks
             card_locations_possible = card_positions_on_board[card_number]
         else:  # all locations are possible for jacks
             card_locations_possible = ALL_POSITIONS
 
         # filter positions based what can actually be filled
-        if card_number == 49:  # one eyed jack can be placed only on already filled locations
+        if card_number == 50:  # one eyed jack can be placed only on already filled locations
             fillable_positions = get_indices_from_given_data(card_locations_possible, others_card_locations, 1)
         else:
             fillable_positions = get_indices_from_given_data(card_locations_possible,
@@ -379,7 +379,7 @@ class SequenceEnvironment(gym.Env):
         new_card_positions = np.zeros((10, 10))
         fill_2d_array_with_value(new_card_positions, 1, placeable_card_locations)
         player_hand_position[card_number_in_hand] = new_card_positions
-        is_one_eyed_jack_dict[player][card_number_in_hand] = card == 49
+        is_one_eyed_jack_dict[player][card_number_in_hand] = card == 50
 
     def update_hand_positions(self, position_placed, one_eyed_jack_played):
         """
@@ -403,7 +403,9 @@ class SequenceEnvironment(gym.Env):
                     # regular card in players hand
                     if one_eyed_jack_played:
                         # one eyed jack played
-                        hand_positions[player][card][position_placed[0]][position_placed[1]] = 1
+                        other_position = self.other_positions[position_placed]
+                        if hand_positions[player][card][other_position[0]][other_position[1]] == 1:
+                            hand_positions[player][card][position_placed[0]][position_placed[1]] = 1
                     else:
                         # regular card played
                         hand_positions[player][card][position_placed[0]][position_placed[1]] = 0
@@ -412,9 +414,11 @@ class SequenceEnvironment(gym.Env):
 
     def drop_dead_cards(self):
         hand_positions = self.state['hand_positions']
+        is_one_eyed_jack = self.state['is_card_one_eyed_jack']
         for player in range(self.players):
+            is_one_eyed_jack_player = is_one_eyed_jack[player]
             for card in range(self.number_of_cards_per_player):
-                if np.sum(hand_positions[player][card]) == 0:
+                if np.sum(hand_positions[player][card]) == 0 and not is_one_eyed_jack_player[card]:
                     next_card = self.get_next_card()
                     if next_card == -1:
                         return

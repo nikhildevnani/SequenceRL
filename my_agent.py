@@ -66,8 +66,9 @@ class SequenceTwoPlayerQNetwork(nn.Module):
 
 
 class DQNAgent:
-    def __init__(self, number_of_players, lr=0.001, gamma=0.99, epsilon=0.1, batch_size=10):
+    def __init__(self, number_of_players, lr=0.001, gamma=0.99, epsilon=0.1, batch_size=10, train_mode=True):
         self.q_network = SequenceTwoPlayerQNetwork(number_of_players)
+        self.train_mode = train_mode
         self.target_q_network = SequenceTwoPlayerQNetwork(number_of_players)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
@@ -80,7 +81,7 @@ class DQNAgent:
     # Function to select an action based on epsilon-greedy exploration
     def select_action(self, state):
         player_board_positions, player_hand_positions, is_card_one_eyed_jack = state
-        if torch.rand(1) < self.epsilon:
+        if torch.rand(1) < self.epsilon and self.train_mode:
             with torch.no_grad():
                 return get_a_valid_move(player_hand_positions)
         else:
