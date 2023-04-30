@@ -2,7 +2,7 @@ import time
 
 import torch
 
-from my_agent import DQNAgent
+from my_agent import SequenceAgent
 from sequence_game.sequence_evironment import SequenceEnvironment
 
 torch.set_default_dtype(torch.float64)
@@ -15,7 +15,7 @@ epsilon = 0.1  # Epsilon for epsilon-greedy exploration
 number_of_players = 2
 update_target_frequency = 20  # updates the target network after these many steps
 batch_size = 32
-agents = [DQNAgent(number_of_players, lr=lr, gamma=gamma, epsilon=epsilon, batch_size=2) for _ in
+agents = [SequenceAgent(number_of_players, lr=lr, gamma=gamma, epsilon=epsilon, batch_size=2) for _ in
           range(number_of_players)]
 env = SequenceEnvironment(number_of_players, -1000, 5, 1000)
 

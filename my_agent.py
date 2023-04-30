@@ -65,7 +65,7 @@ class SequenceTwoPlayerQNetwork(nn.Module):
         return result
 
 
-class DQNAgent:
+class SequenceAgent:
     def __init__(self, number_of_players, lr=0.001, gamma=0.99, epsilon=0.1, batch_size=10, train_mode=True):
         self.q_network = SequenceTwoPlayerQNetwork(number_of_players)
         self.train_mode = train_mode

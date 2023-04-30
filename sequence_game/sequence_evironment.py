@@ -1,6 +1,6 @@
 import logging
 import os
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Optional
 
 import gym
@@ -313,55 +313,35 @@ class SequenceEnvironment(gym.Env):
         """
         matrix = self.state['player_board_positions'][self.current_player]
         # Define the directions to search in
-        directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
-        points_in_the_direction = [[] for _ in range(8)]
-
-        sequence_lengths = []
-        # Iterate over the directions
+        directions = [(1, 0), (0, 1), (1, 1),
+                      (-1, 1)]  # top to bottom, left to right, top left to bottom right, bottom left to top right
+        max_sequence_length = 0
+        placed_row, placed_col = position
         for index, direction in enumerate(directions):
-            # Get the starting position
-            i, j = position
+            dr, dc = direction
+            sequence_length = 0
+            row, col = placed_row - (dr * 4), placed_col - (dc * 4)
+            curr_points_under_consideration = deque([])
+            for _ in range(9):
+                if row < 0 or col < 0 or row >= len(matrix) or col >= len(matrix[0]):
+                    continue
 
-            # Initialize the sequence length
-            seq_len = 0
-            number_of_existing_sequence_points_used = 0
+                if len(curr_points_under_consideration) == 5:
+                    pop_row, pop_col = curr_points_under_consideration.popleft()
+                    sequence_length -= matrix[pop_row, pop_col]
 
-            while 0 <= i < matrix.shape[0] and 0 <= j < matrix.shape[1] and matrix[i][j] == 1:
-                if self.is_location_in_any_sequence((i, j)):
-                    number_of_existing_sequence_points_used += 1
+                curr_points_under_consideration.append([row, col])
+                sequence_length += matrix[row, col]
+                max_sequence_length = max(max_sequence_length, sequence_length)
 
-                # if we are using more than 1 sequence point, we are extending in the same direction on an existing
-                # sequence, so stop it
-                if number_of_existing_sequence_points_used == 2:
-                    seq_len -= 1
+                if sequence_length == 5:
+                    self.formed_sequences[self.current_player].append(list(curr_points_under_consideration))
                     break
-                seq_len += 1
-                points_in_the_direction[index].append((i, j))
-                i += direction[0]
-                j += direction[1]
 
-            # Update the maximum sequence length if needed
-            sequence_lengths.append(seq_len)
+                row += dr
+                col += dc
 
-        vertical_length = sequence_lengths[0] + sequence_lengths[1] - 1
-        horizontal_length = sequence_lengths[2] + sequence_lengths[3] - 1
-        top_left_to_bottom_right_length = sequence_lengths[4] + sequence_lengths[5] - 1
-        bottom_left_to_top_right_length = sequence_lengths[6] + sequence_lengths[7] - 1
-
-        if vertical_length >= 5:
-            vertical_sequence_points = points_in_the_direction[0] + points_in_the_direction[1][1:]
-            self.formed_sequences[self.current_player].append(vertical_sequence_points[:5])
-        if horizontal_length >= 5:
-            horizontal_sequence_points = points_in_the_direction[2] + points_in_the_direction[3][1:]
-            self.formed_sequences[self.current_player].append(horizontal_sequence_points[:5])
-        if top_left_to_bottom_right_length >= 5:
-            top_left_to_bottom_right_points = points_in_the_direction[4] + points_in_the_direction[5][1:]
-            self.formed_sequences[self.current_player].append(top_left_to_bottom_right_points[:5])
-        if bottom_left_to_top_right_length >= 5:
-            bottom_left_to_top_right_points = points_in_the_direction[6] + points_in_the_direction[7][1:]
-            self.formed_sequences[self.current_player].append(bottom_left_to_top_right_points[:5])
-
-        return max(vertical_length, horizontal_length, top_left_to_bottom_right_length, bottom_left_to_top_right_length)
+        return max_sequence_length
 
     def give_player_card_at_hand_position(self, player, card, card_number_in_hand):
         """

@@ -4,10 +4,10 @@ import traceback
 import click
 import torch
 
-from my_agent import DQNAgent
+from my_agent import SequenceAgent
 from sequence_game.sequence_evironment import SequenceEnvironment
 
-agent = DQNAgent(2, train_mode=False)
+agent = SequenceAgent(2, train_mode=False)
 env = SequenceEnvironment(2, -1000, 5, 1000)
 torch.set_default_dtype(torch.float64)
 

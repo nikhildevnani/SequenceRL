@@ -17,7 +17,7 @@ try:
         index += 1
         sequence_env.render()
 except:
-    print("FAILED")
+    print("FAILED", index)
     print((player_board_positions, players_hand, is_card_one_eyed_jack), info)
 print(info)
 # sequence_env.render()
