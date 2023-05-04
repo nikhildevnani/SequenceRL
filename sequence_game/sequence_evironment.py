@@ -4,7 +4,6 @@ from collections import defaultdict, deque
 from typing import Optional
 
 import gym
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from gym.core import ActType
@@ -15,11 +14,13 @@ from helper_functions import get_number_of_cards_for_players, generate_the_card_
     get_indices_from_given_data, \
     fill_locations_with_ones_in_3d_array, get_number_of_sequences_to_build, get_all_positions, \
     get_card_positions_on_board, \
-    fill_2d_array_with_value, clear_directory, get_negative_array, get_other_positions_dictionary, get_card_mapping
+    fill_2d_array_with_value, clear_directory, get_negative_array, get_other_positions_dictionary, \
+    get_card_number_to_name_mapping
+from misc.image_render import generate_image
 
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 ALL_POSITIONS = get_all_positions()
-RENDER_OUTPUTS = './render_outputs'
+RENDER_OUTPUTS = './render_output'
 
 
 class SequenceEnvironment(gym.Env):
@@ -27,7 +28,7 @@ class SequenceEnvironment(gym.Env):
     def __init__(self, players, invalid_move_reward, sequence_length_reward_multiplier, final_sequence_reward):
         colors = ['white', 'red', 'blue', 'green'][:players + 1]
         self.cmap = ListedColormap(colors)
-        self.card_mapping_dict = get_card_mapping()
+        self.card_mapping_dict = get_card_number_to_name_mapping()
         self.final_sequence_reward = final_sequence_reward
         self.sequence_length_reward_multiplier = sequence_length_reward_multiplier
         self.invalid_move_reward = invalid_move_reward
@@ -160,12 +161,8 @@ class SequenceEnvironment(gym.Env):
                     if arr[player][row][col] == 1:
                         new_image_arr[row][col] = player
         image_path = os.path.join(RENDER_OUTPUTS, f"{self.render_count}.png")
-        plt.imshow(new_image_arr, cmap=self.cmap)
-        plt.colorbar()
-        plt.grid()
-        plt.savefig(image_path)
-        plt.clf()
-        positions = np.nonzero(self.state['hand_positions'][self.current_player])
+        generate_image(new_image_arr, image_path, self.state['actual_card_hand_positions'][self.current_player])
+
         print('Card Numbers', [(index, self.card_mapping_dict[card_number]) for index, card_number in
                                enumerate(self.state['actual_card_hand_positions'][self.current_player])])
         self.render_count += 1
@@ -313,8 +310,7 @@ class SequenceEnvironment(gym.Env):
         """
         matrix = self.state['player_board_positions'][self.current_player]
         # Define the directions to search in
-        directions = [(1, 0), (0, 1), (1, 1),
-                      (-1, 1)]  # top to bottom, left to right, top left to bottom right, bottom left to top right
+        directions = [(1, 0), (0, 1), (1, 1), (-1, 1)]
         max_sequence_length = 0
         placed_row, placed_col = position
         for index, direction in enumerate(directions):
@@ -322,9 +318,23 @@ class SequenceEnvironment(gym.Env):
             sequence_length = 0
             row, col = placed_row - (dr * 4), placed_col - (dc * 4)
             curr_points_under_consideration = deque([])
-            for _ in range(9):
+            for _ in range(10):
                 if row < 0 or col < 0 or row >= len(matrix) or col >= len(matrix[0]):
                     continue
+
+                if sequence_length == 5:
+                    can_add = True
+                    for formed_sequence in self.formed_sequences[self.current_player]:
+                        common_points_len = 0
+                        for point in curr_points_under_consideration:
+                            if point in formed_sequence:
+                                common_points_len += 1
+                        if common_points_len == 5:
+                            can_add = False
+                    if not can_add:
+                        continue
+                    self.formed_sequences[self.current_player].append(list(curr_points_under_consideration))
+                    break
 
                 if len(curr_points_under_consideration) == 5:
                     pop_row, pop_col = curr_points_under_consideration.popleft()
@@ -333,10 +343,6 @@ class SequenceEnvironment(gym.Env):
                 curr_points_under_consideration.append([row, col])
                 sequence_length += matrix[row, col]
                 max_sequence_length = max(max_sequence_length, sequence_length)
-
-                if sequence_length == 5:
-                    self.formed_sequences[self.current_player].append(list(curr_points_under_consideration))
-                    break
 
                 row += dr
                 col += dc
