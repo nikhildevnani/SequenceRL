@@ -20,7 +20,7 @@ from misc.image_render import generate_image
 
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 ALL_POSITIONS = get_all_positions()
-RENDER_OUTPUTS = './render_output'
+RENDER_OUTPUTS = './render_outputs'
 
 
 class SequenceEnvironment(gym.Env):
@@ -320,6 +320,8 @@ class SequenceEnvironment(gym.Env):
             curr_points_under_consideration = deque([])
             for _ in range(10):
                 if row < 0 or col < 0 or row >= len(matrix) or col >= len(matrix[0]):
+                    row += dr
+                    col += dc
                     continue
 
                 if sequence_length == 5:

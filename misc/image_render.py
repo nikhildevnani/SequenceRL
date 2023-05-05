@@ -7,7 +7,7 @@ from helper_functions import get_cards_name_positions, get_card_name_to_number_m
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 
 # Create a new image with a white background
-width, height = 1000, 1000
+width, height = 2000, 2000
 RED = 255, 0, 0
 BLUE = 0, 0, 255
 WHITE = 255, 255, 255
@@ -16,7 +16,7 @@ WHITE = 255, 255, 255
 current_file = os.path.abspath(__file__)
 current_dir = os.path.dirname(current_file)
 font_path = os.path.join(current_dir, 'lato', 'lato-black.ttf')
-font = ImageFont.truetype(font_path, 12)
+font = ImageFont.truetype(font_path, 28)
 card_names_on_positions = get_cards_name_positions()
 card_numbers_from_names = get_card_name_to_number_mapping()
 
