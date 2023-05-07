@@ -1,3 +1,5 @@
+import os
+import subprocess
 import sys
 import traceback
 
@@ -9,7 +11,15 @@ from sequence_game.sequence_evironment import SequenceEnvironment
 
 agent = SequenceAgent(2, train_mode=False)
 env = SequenceEnvironment(2, -1000, 5, 1000)
+env.reset()
 torch.set_default_dtype(torch.float64)
+
+directory = env.RENDER_DIR
+
+if os.path.exists(directory):
+    subprocess.call(['open', directory])
+else:
+    print('Directory does not exist')
 
 
 @click.command()
@@ -37,7 +47,7 @@ def play(player):
             action = agent.select_action(state)
             state, reward, done, info = env.step(action)
             env.render()
-            x, y, z = [int(x) for x in input("Enter 3 integers separated by spaces: ").split(',')]
+            y, z, x = [int(x) for x in input("Enter 3 integers separated by spaces: ").split(',')]
             action = (x, y, z)
             state, reward, done, info = env.step(action)
         except Exception as e:
@@ -47,6 +57,7 @@ def play(player):
             break
 
     if done:
+        env.render()
         my_dict = env.formed_sequences
         max_key = max(my_dict, key=lambda k: len(my_dict[k]))
         print(f'Game Over, Player: {max_key} Won')

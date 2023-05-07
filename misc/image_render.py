@@ -9,6 +9,8 @@ CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 # Create a new image with a white background
 width, height = 2000, 2000
 RED = 255, 0, 0
+LIGHT_RED = 255, 204, 204
+LIGHT_BLUE = 173, 216, 230
 BLUE = 0, 0, 255
 WHITE = 255, 255, 255
 
@@ -16,12 +18,19 @@ WHITE = 255, 255, 255
 current_file = os.path.abspath(__file__)
 current_dir = os.path.dirname(current_file)
 font_path = os.path.join(current_dir, 'lato', 'lato-black.ttf')
-font = ImageFont.truetype(font_path, 28)
+font = ImageFont.truetype(font_path, 26)
 card_names_on_positions = get_cards_name_positions()
 card_numbers_from_names = get_card_name_to_number_mapping()
 
 
-def generate_image(matrix, image_name, actual_hand_cards):
+def generate_image(matrix, image_name, actual_hand_cards, formed_sequences):
+    formed_sequence_points = {}
+    for player, sequences in formed_sequences.items():
+        for sequence in sequences:
+            for location in sequence:
+                location = tuple(location)
+                formed_sequence_points[location] = player
+
     image = Image.new('RGB', (width, height), color='white')
     draw = ImageDraw.Draw(image)
 
@@ -40,7 +49,7 @@ def generate_image(matrix, image_name, actual_hand_cards):
                 card_number = card_numbers_from_names[card_name]
                 if card_number in actual_hand_cards:
                     text_color = 'green'
-                text = f"({i}, {j}, {card_name})"
+                text = f"{i}, {j}\n{card_name}"
             else:
                 text = "corner"
 
@@ -48,9 +57,15 @@ def generate_image(matrix, image_name, actual_hand_cards):
             y = i * cell_size
             color = WHITE
             if matrix[location] == 0:
-                color = RED
+                if location in formed_sequence_points:
+                    color = LIGHT_RED
+                else:
+                    color = RED
             if matrix[location] == 1:
-                color = BLUE
+                if location in formed_sequence_points:
+                    color = LIGHT_BLUE
+                else:
+                    color = BLUE
             draw.rectangle([x, y, x + cell_size, y + cell_size], fill=color)
             draw.text((x + cell_size // 2, y + cell_size // 2), text, fill=text_color, font=font, anchor='mm')
 

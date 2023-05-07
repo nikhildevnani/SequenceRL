@@ -1,6 +1,6 @@
-import logging
 import os
 from collections import defaultdict, deque
+from datetime import datetime
 from typing import Optional
 
 import gym
@@ -20,7 +20,6 @@ from misc.image_render import generate_image
 
 CORNER_LOCATIONS = [(0, 0), (0, 9), (9, 0), (9, 9)]
 ALL_POSITIONS = get_all_positions()
-RENDER_OUTPUTS = './render_outputs'
 
 
 class SequenceEnvironment(gym.Env):
@@ -116,7 +115,7 @@ class SequenceEnvironment(gym.Env):
         """
         card_played, row, col = action
         position_placed = (row, col)
-        logging.info(f'playing:{action}, for player:{self.current_player}')
+
         is_one_eyed_jack = self.state['is_card_one_eyed_jack'][self.current_player][card_played]
         if not self.is_action_valid(is_one_eyed_jack, position_placed, card_played):
             return self.get_current_players_observation(), self.invalid_move_reward, True, {
@@ -160,8 +159,9 @@ class SequenceEnvironment(gym.Env):
                         continue
                     if arr[player][row][col] == 1:
                         new_image_arr[row][col] = player
-        image_path = os.path.join(RENDER_OUTPUTS, f"{self.render_count}.png")
-        generate_image(new_image_arr, image_path, self.state['actual_card_hand_positions'][self.current_player])
+        image_path = os.path.join(self.RENDER_DIR, f"{self.render_count}.png")
+        generate_image(new_image_arr, image_path, self.state['actual_card_hand_positions'][self.current_player],
+                       self.formed_sequences)
 
         print('Card Numbers', [(index, self.card_mapping_dict[card_number]) for index, card_number in
                                enumerate(self.state['actual_card_hand_positions'][self.current_player])])
@@ -180,7 +180,10 @@ class SequenceEnvironment(gym.Env):
         :return:
         """
         self.move_to_initial_state()
-        clear_directory(RENDER_OUTPUTS)
+        game_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        current_dir = os.getcwd()
+        self.RENDER_DIR = os.path.join(current_dir, 'render_outputs', game_time)
+        clear_directory(self.RENDER_DIR)
         return self.get_current_players_observation()
 
     def distribute_the_cards(self):
@@ -316,38 +319,34 @@ class SequenceEnvironment(gym.Env):
         for index, direction in enumerate(directions):
             dr, dc = direction
             sequence_length = 0
-            row, col = placed_row - (dr * 4), placed_col - (dc * 4)
+            row, col = placed_row - (dr * 5), placed_col - (dc * 5)
             curr_points_under_consideration = deque([])
             for _ in range(10):
-                if row < 0 or col < 0 or row >= len(matrix) or col >= len(matrix[0]):
-                    row += dr
-                    col += dc
-                    continue
-
-                if sequence_length == 5:
-                    can_add = True
-                    for formed_sequence in self.formed_sequences[self.current_player]:
-                        common_points_len = 0
-                        for point in curr_points_under_consideration:
-                            if point in formed_sequence:
-                                common_points_len += 1
-                        if common_points_len == 5:
-                            can_add = False
-                    if not can_add:
-                        continue
-                    self.formed_sequences[self.current_player].append(list(curr_points_under_consideration))
-                    break
-
-                if len(curr_points_under_consideration) == 5:
-                    pop_row, pop_col = curr_points_under_consideration.popleft()
-                    sequence_length -= matrix[pop_row, pop_col]
-
-                curr_points_under_consideration.append([row, col])
-                sequence_length += matrix[row, col]
-                max_sequence_length = max(max_sequence_length, sequence_length)
-
                 row += dr
                 col += dc
+                if (0 <= row < len(matrix)) and (0 <= col < len(matrix[0])):
+
+                    if len(curr_points_under_consideration) == 5:
+                        pop_row, pop_col = curr_points_under_consideration.popleft()
+                        sequence_length -= matrix[pop_row, pop_col]
+
+                    curr_points_under_consideration.append([row, col])
+                    sequence_length += matrix[row, col]
+                    max_sequence_length = max(max_sequence_length, sequence_length)
+
+                    if sequence_length == 5:
+                        can_add = True
+                        for formed_sequence in self.formed_sequences[self.current_player]:
+                            common_points_len = 0
+                            for point in curr_points_under_consideration:
+                                if point in formed_sequence:
+                                    common_points_len += 1
+                            if common_points_len == 5:
+                                can_add = False
+                        if not can_add:
+                            continue
+                        self.formed_sequences[self.current_player].append(list(curr_points_under_consideration))
+                        break
 
         return max_sequence_length
 

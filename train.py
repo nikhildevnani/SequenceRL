@@ -1,5 +1,5 @@
+import logging
 import time
-from collections import defaultdict
 
 import torch
 
@@ -7,6 +7,11 @@ from my_agent import SequenceAgent
 from sequence_game.sequence_evironment import SequenceEnvironment
 
 torch.set_default_dtype(torch.float64)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 # Initialize the DRL agents and other variables
 load_previous = True
@@ -30,7 +35,6 @@ env = SequenceEnvironment(number_of_players, -1000, 5, 1000)
 def train(num_episodes, max_steps_per_episode=100, update_target_freq=10):
     start_time = time.time()
     train_start_time = start_time
-    winners = defaultdict(int)
     for episode in range(num_episodes):
         state = env.reset()
         total_reward_for_agent = [0] * len(agents)
@@ -53,16 +57,15 @@ def train(num_episodes, max_steps_per_episode=100, update_target_freq=10):
         if episode % 100 == 0:
             end_time = time.time() - start_time
             start_time = time.time()
-            print(
-                "Episode: {}, Total Steps: {}, Total Reward: {}, Total Time: {:.2f}, Time Taken: {:.2f}".format(
+            logging.info(
+                "Episode: {}, Total Time: {:.2f}, Total Steps: {}, Total Reward: {}, Time Taken: {:.2f}".format(
                     episode + 1,
+                    start_time - train_start_time,
                     step + 1,
                     total_reward_for_agent,
-                    start_time - train_start_time,
                     end_time))
 
         if episode % 500 == 499:  # write model after every 500 episodes to disk
-
             for index, agent in enumerate(agents):
                 agent.write_model_to_disk(index)
 
