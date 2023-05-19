@@ -148,10 +148,9 @@ class SequenceEnvironment(gym.Env):
         """
         Renders the current state of the board
         """
-
+        clear_directory(self.RENDER_DIR)
         arr = self.state['player_board_positions']
         new_image_arr = np.full((10, 10), -1)
-
         for row in range(10):
             for col in range(10):
                 for player in range(self.players):
@@ -183,7 +182,7 @@ class SequenceEnvironment(gym.Env):
         game_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         current_dir = os.getcwd()
         self.RENDER_DIR = os.path.join(current_dir, 'render_outputs', game_time)
-        clear_directory(self.RENDER_DIR)
+
         return self.get_current_players_observation()
 
     def distribute_the_cards(self):

@@ -70,4 +70,4 @@ def train(num_episodes, max_steps_per_episode=100, update_target_freq=10):
                 agent.write_model_to_disk(index)
 
 
-train(50000, 100, 2)
+train(5000000, 100, 2)
